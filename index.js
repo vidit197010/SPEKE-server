@@ -9,6 +9,7 @@ const getWidevineLicense = (contentId) => {
     const keyId = crypto.randomBytes(16).toString('hex');
     const key = crypto.randomBytes(16).toString('base64');
   
+
     // Normally, you'd retrieve these from a secure storage or key management system
     return {
       keyId: keyId,
@@ -22,11 +23,14 @@ app.post("/speke",(req,res)=>{
   if (!contentId || !systemIds) {
     return res.status(400).send('ContentId and SystemIds are required');
   }
+  console.log("ContentId",contentId);
+  console.log("SystemIds",systemIds);
 
   const keys = systemIds.map(systemId => {
     let license;
     if (systemId === 'edef8ba9-79d6-4ace-a3c8-27dcd51d21ed') { // Widevine SystemId
       license = getWidevineLicense(contentId);
+      console.log("Inside")
     }
     return {
       systemId: systemId,
