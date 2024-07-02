@@ -1,47 +1,61 @@
-import express from "express"
-import crypto from "crypto"
-import "dotenv/config"
+const express = require('express');
+const bodyParser = require('body-parser');
+const crypto = require('crypto');
+const cors = require('cors');
+
 const app = express();
-app.use(express.json())
+app.use(bodyParser.json());
+app.use(express.json());
+app.use(cors());
 
-const getWidevineLicense = (contentId) => {
-    // Generate a unique KeyId and Key
-    const keyId = crypto.randomBytes(16).toString('hex');
-    const key = crypto.randomBytes(16).toString('base64');
-  
+app.get('/', (req, res) => {
+  res.send('SPEKE Server is running');
+});
 
-    // Normally, you'd retrieve these from a secure storage or key management system
-    return {
-      keyId: keyId,
-      key: key
-    };
-  };
-app.post("/speke",(req,res)=>{
-    const { contentId, systemIds } = req.body;
-
-  // Validate request (e.g., check authorization, contentId, etc.)
-  if (!contentId || !systemIds) {
-    return res.status(400).send('ContentId and SystemIds are required');
-  }
-  console.log("ContentId",contentId);
-  console.log("SystemIds",systemIds);
-
-  const keys = systemIds.map(systemId => {
-    let license;
-    if (systemId === 'edef8ba9-79d6-4ace-a3c8-27dcd51d21ed') { // Widevine SystemId
-      license = getWidevineLicense(contentId);
-      console.log("Inside")
+// A simple in-memory key store
+const keyStore = {
+  'example-resource': {
+    'content-123': {
+      keyId: 'example-key-id',
+      key: 'example-key'
     }
-    return {
-      systemId: systemId,
-      keyId: license.keyId,
-      key: license.key
-    };
-  });
+  }
+};
 
-  res.json({ keys });
-})
-const PORT = process.env.PORT;
-app.listen(PORT,()=>{
-    console.log(`Server is Running on PORT:- 8000`)
-})
+const generateKey = (contentId) => {
+  return {
+    keyId: crypto.randomBytes(16).toString('hex'),
+    key: crypto.randomBytes(16).toString('base64')
+  };
+};
+
+app.post('/speke', (req, res) => {
+  const { contentId, systemIds, resourceId } = req.body;
+
+  if (!contentId || !systemIds || !resourceId) {
+    return res.status(400).send('ContentId, SystemIds, and ResourceId are required');
+  }
+
+  let keys = keyStore[resourceId]?.[contentId];
+
+  if (!keys) {
+    keys = generateKey(contentId);
+    if (!keyStore[resourceId]) {
+      keyStore[resourceId] = {};
+    }
+    keyStore[resourceId][contentId] = keys;
+  }
+
+  const responseKeys = systemIds.map(systemId => ({
+    systemId: systemId,
+    keyId: keys.keyId,
+    key: keys.key
+  }));
+
+  res.json({ keys: responseKeys });
+});
+
+const port = process.env.PORT || 8000;
+app.listen(port, () => {
+  console.log(`SPEKE Server is running on port ${port}`);
+});
