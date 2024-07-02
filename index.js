@@ -1,4 +1,5 @@
 import express from "express"
+import "dotenv/config"
 const app = express();
 
 
@@ -35,7 +36,7 @@ app.post("/speke",(req,res)=>{
 
   res.json({ keys });
 })
-
-app.listen(8000,()=>{
+const PORT = process.env.PORT;
+app.listen(PORT,()=>{
     console.log(`Server is Running on PORT:- 8000`)
 })
