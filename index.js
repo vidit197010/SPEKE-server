@@ -5,19 +5,28 @@ const cors = require('cors');
 
 const app = express();
 app.use(bodyParser.json());
-app.use(express.json());
 app.use(cors());
 
 app.get('/', (req, res) => {
   res.send('SPEKE Server is running');
 });
 
-// A simple in-memory key store
+// Sample in-memory key store with pre-populated data
 const keyStore = {
   'example-resource': {
     'content-123': {
-      keyId: 'example-key-id',
-      key: 'example-key'
+      keyId: 'example-key-id-123',
+      key: 'example-key-123'
+    },
+    'content-456': {
+      keyId: 'example-key-id-456',
+      key: 'example-key-456'
+    }
+  },
+  'another-resource': {
+    'content-789': {
+      keyId: 'another-key-id-789',
+      key: 'another-key-789'
     }
   }
 };
@@ -30,20 +39,31 @@ const generateKey = (contentId) => {
 };
 
 app.post('/speke', (req, res) => {
-  const { contentId, systemIds, resourceId } = req.body;
+  const { systemIds, resourceId } = req.body;
 
-  if (!contentId || !systemIds || !resourceId) {
-    return res.status(400).send('ContentId, SystemIds, and ResourceId are required');
+  if (!systemIds || !resourceId) {
+    console.error('Invalid request:', req.body);
+    return res.status(400).send('SystemIds and ResourceId are required');
   }
 
-  let keys = keyStore[resourceId]?.[contentId];
+  // Parse resourceId to extract resource and contentId
+  const [resource, contentId] = resourceId.split('|');
+
+  if (!contentId) {
+    console.error('ContentId not found in ResourceId');
+    return res.status(400).send('ContentId not found in ResourceId');
+  }
+
+  console.log('Received request:', req.body);
+
+  let keys = keyStore[resource]?.[contentId];
 
   if (!keys) {
     keys = generateKey(contentId);
-    if (!keyStore[resourceId]) {
-      keyStore[resourceId] = {};
+    if (!keyStore[resource]) {
+      keyStore[resource] = {};
     }
-    keyStore[resourceId][contentId] = keys;
+    keyStore[resource][contentId] = keys;
   }
 
   const responseKeys = systemIds.map(systemId => ({
